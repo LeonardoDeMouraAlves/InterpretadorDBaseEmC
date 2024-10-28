@@ -1,0 +1,19 @@
+
+
+CREATE TABLE users (name C, age N, city C, sexo C)
+
+
+INSERT INTO users (Leo, 25, Goi, c)
+INSERT INTO users (Joao, 30, Boiz)
+SELECT * FROM users;
+CREATE TABLE test (testando C)
+
+
+INSERT INTO test (ppp)
+SELECT * FROM test;
+
+
+
+
+
+
