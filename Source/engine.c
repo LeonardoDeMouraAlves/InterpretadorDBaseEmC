@@ -3,36 +3,42 @@
 #include <string.h>
 #include <ctype.h>
 
+// Definição dos tamanhos máximos de campos e registros
 #define MAX_FIELDS 10
 #define MAX_RECORDS 100
 #define MAX_FIELD_LENGTH 50
 
+// Estrutura para definir um campo de tabela (nome e tipo)
 typedef struct {
     char field_name[MAX_FIELD_LENGTH];  // Nome do campo
     char field_type;                    // Tipo do campo (C ou N)
 } Field;
 
+// Estrutura para definir uma tabela com campos e registros
 typedef struct {
     char table_name[MAX_FIELD_LENGTH];  // Nome da tabela
-    Field fields[MAX_FIELDS];           // Nomes das colunas e tipos
-    char records[MAX_RECORDS][MAX_FIELDS][MAX_FIELD_LENGTH]; // Dados inseridos
-    int field_count;                    // Quantidade de colunas
-    int record_count;                   // Quantidade de registros
+    Field fields[MAX_FIELDS];           // Array de campos da tabela
+    char records[MAX_RECORDS][MAX_FIELDS][MAX_FIELD_LENGTH]; // Array de registros
+    int field_count;                    // Número de campos na tabela
+    int record_count;                   // Número de registros na tabela
 } Table;
 
 Table tables[10];                       // Array de tabelas
 int table_count = 0;                    // Contador de tabelas
 
-void show_table(Table *table);          
-int execute_command(const char *input); 
-Table* get_table_by_name(const char *name);
+void show_table(Table *table);          // Função para exibir dados de uma tabela
+int execute_command(const char *input); // Função para executar comandos
+Table* get_table_by_name(const char *name); // Função para buscar uma tabela por nome
 
+// Função que exibe a tabela e seus registros
 void show_table(Table *table) {
+    // Imprime o nome de cada campo
     for (int i = 0; i < table->field_count; i++) {
         printf("%s\t", table->fields[i].field_name);
     }
     printf("\n");
 
+    // Imprime cada registro
     for (int i = 0; i < table->record_count; i++) {
         for (int j = 0; j < table->field_count; j++) {
             printf("%s\t", table->records[i][j]);
@@ -41,15 +47,17 @@ void show_table(Table *table) {
     }
 }
 
+// Função para buscar uma tabela pelo nome
 Table* get_table_by_name(const char *name) {
     for (int i = 0; i < table_count; i++) {
         if (strcmp(tables[i].table_name, name) == 0) {
-            return &tables[i];
+            return &tables[i];  // Retorna o ponteiro para a tabela
         }
     }
-    return NULL;
+    return NULL; // Retorna NULL se a tabela não for encontrada
 }
 
+// Definição de tipos de tokens para análise léxica
 typedef enum {
     TOKEN_EOF,
     TOKEN_CREATE,
@@ -67,21 +75,24 @@ typedef enum {
     TOKEN_ASTERISK // *
 } TokenType;
 
+// Estrutura para definir um token (tipo e valor)
 typedef struct {
     TokenType type;
     char value[MAX_FIELD_LENGTH];
 } Token;
 
+// Função que extrai o próximo token da entrada
 Token get_token(const char **input) {
     Token token;
     token.type = TOKEN_EOF;
     token.value[0] = '\0';
 
-    // Ignorar espaços, tabulações e novas linhas
+    // Ignora espaços, tabulações e novas linhas
     while (**input == ' ' || **input == '\n' || **input == '\t' || **input == '\r') {
         (*input)++;
     }
     
+    // Verifica palavras-chave e símbolos e atribui o tipo de token
     if (strncmp(*input, "CREATE", 6) == 0) {
         (*input) += 6;
         token.type = TOKEN_CREATE;
@@ -133,17 +144,17 @@ Token get_token(const char **input) {
     return token;
 }
 
-// Função para validar o tipo de dado inserido
+// Função para validar o tipo de dado de um valor inserido
 int validate_field_value(const char *value, char field_type) {
-    if (field_type == 'N') { // campo numérico
+    if (field_type == 'N') { // Campo numérico
         for (int i = 0; value[i] != '\0'; i++) {
             if (!isdigit(value[i])) {
                 return 0;  // valor inválido
             }
         }
-    } else if (field_type == 'C') { // campo de texto
+    } else if (field_type == 'C') { // Campo de texto
         for (int i = 0; value[i] != '\0'; i++) {
-            if (!isalpha(value[i])) {  // Aceita apenas letras para simplicidade
+            if (!isalpha(value[i])) {  // Aceita apenas letras
                 return 0;  // valor inválido
             }
         }
@@ -151,7 +162,7 @@ int validate_field_value(const char *value, char field_type) {
     return 1; // valor válido
 }
 
-// Função para criação da tabela
+// Função para processar o comando CREATE TABLE
 int parse_create_table(const char **input) {
     Token token = get_token(input);
     if (token.type == TOKEN_STRING) {
@@ -194,7 +205,7 @@ int parse_create_table(const char **input) {
     return 0;
 }
 
-// Atualização na função parse_insert_into para validar tipos de dados
+// Função para processar o comando INSERT INTO, incluindo validação de tipo
 int parse_insert_into(const char **input) {
     Token token = get_token(input);
     if (token.type == TOKEN_STRING) {
@@ -210,7 +221,7 @@ int parse_insert_into(const char **input) {
             do {
                 token = get_token(input);
                 if (token.type == TOKEN_STRING || token.type == TOKEN_NUMBER) {
-                    // Validar tipo do valor com o tipo de campo
+                    // Valida o valor conforme o tipo do campo
                     if (field_index < table->field_count &&
                         !validate_field_value(token.value, table->fields[field_index].field_type)) {
                         printf("Erro de sintaxe: Tipo de valor inválido para o campo '%s'.\n",
@@ -238,7 +249,7 @@ int parse_insert_into(const char **input) {
     return 0;
 }
 
-// Função para selecionar dados da tabela
+// Função para processar o comando SELECT
 int parse_select_from(const char **input) {
     Token token = get_token(input);
     if (token.type == TOKEN_ASTERISK) {
@@ -249,7 +260,7 @@ int parse_select_from(const char **input) {
                 Table *table = get_table_by_name(token.value);
                 if (table) {
                     show_table(table);
-                    token = get_token(input);  // Verificar se há um ponto e vírgula após o comando
+                    token = get_token(input);  // Verifica se há um ';' após SELECT
                     if (token.type != TOKEN_SEMICOLON && token.type != TOKEN_EOF) {
                         printf("Erro de sintaxe: Comando inesperado após SELECT.\n");
                         return 1;
@@ -273,6 +284,7 @@ int parse_select_from(const char **input) {
     }
 }
 
+// Função que executa o comando baseado na entrada
 int execute_command(const char *input) {
     const char *ptr = input;
     Token token = get_token(&ptr);
@@ -296,6 +308,7 @@ int execute_command(const char *input) {
     return 0;
 }
 
+// Função principal que lê o arquivo e executa os comandos
 int main() {
     table_count = 0;
 
@@ -316,10 +329,10 @@ int main() {
 
     char line[256];
     while (fgets(line, sizeof(line), file)) {
-        // Remover novas linhas e espaços no final da linha
+        // Remove novas linhas e espaços ao final
         line[strcspn(line, "\r\n")] = 0;
 
-        // Ignorar linhas vazias
+        // Ignora linhas vazias
         if (strlen(line) > 0) {
             if (execute_command(line) != 0) {
                 printf("Interrompendo execução devido a erro.\n");
